@@ -459,7 +459,7 @@ aim:toggle({name = "Toggle",def = false,callback = function(value)
 
     local function getClosestTarget()
         local closest = nil
-        local shortestDistance = 150
+        local shortestDistance = 100
 
         for _, target in ipairs(Players:GetPlayers()) do
             if target ~= player and target.Character and target.Character:FindFirstChild("Head") then
