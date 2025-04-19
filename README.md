@@ -440,76 +440,82 @@ local aim = VIS:section({name = "Aimbot",side = "right",size = 100})
 	
 aim:toggle({name = "Toggle",def = false,callback = function(value)
 	tog = value
-	print(tog)
+    print("Aimbot Toggled: " .. tostring(tog))
 
-	local Players = game:GetService("Players")
-	local RunService = game:GetService("RunService")
-	local UserInputService = game:GetService("UserInputService")
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+    local UserInputService = game:GetService("UserInputService")
 
-	local player = Players.LocalPlayer
-	local camera = workspace.CurrentCamera
+    local player = Players.LocalPlayer
+    local camera = workspace.CurrentCamera
 
-	local fovCircle
-	local connection
+    -- Store these globally for reuse between toggles
+    if not shared.aimConnection then
+        shared.aimConnection = nil
+    end
+    if not shared.fovCircle then
+        shared.fovCircle = nil
+    end
 
-	if tog then
-		-- Create FOV Circle
-		fovCircle = Drawing.new("Circle")
-		fovCircle.Visible = true
-		fovCircle.Color = Color3.fromRGB(255, 255, 255)
-		fovCircle.Thickness = 1
-		fovCircle.Filled = false
-		fovCircle.Radius = 100 -- Fixed FOV radius
+    local function getClosestTarget()
+        local closest = nil
+        local shortestDistance = 150
 
-		-- Get the closest player inside the FOV circle
-		local function getClosestTarget()
-			local closest = nil
-			local shortestDistance = 150
+        for _, target in ipairs(Players:GetPlayers()) do
+            if target ~= player and target.Character and target.Character:FindFirstChild("Head") then
+                local head = target.Character.Head
+                local worldPos = head.Position
+                local screenPos, onScreen = camera:WorldToViewportPoint(worldPos)
+                if onScreen then
+                    local mousePos = UserInputService:GetMouseLocation()
+                    local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                    if distance < shortestDistance then
+                        shortestDistance = distance
+                        closest = target
+                    end
+                end
+            end
+        end
+        return closest
+    end
 
-			for _, target in ipairs(Players:GetPlayers()) do
-				if target ~= player and target.Character and target.Character:FindFirstChild("Head") then
-					local head = target.Character.Head
-					local worldPos = head.Position
-					local screenPos, onScreen = camera:WorldToViewportPoint(worldPos)
-					if onScreen then
-						local mousePos = UserInputService:GetMouseLocation()
-						local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-						if distance < shortestDistance then
-							shortestDistance = distance
-							closest = target
-						end
-					end
-				end
-			end
-			return closest
-		end
+    if tog then
+        -- Create FOV Circle
+        shared.fovCircle = Drawing.new("Circle")
+        shared.fovCircle.Visible = true
+        shared.fovCircle.Color = Color3.fromRGB(255, 255, 255)
+        shared.fovCircle.Thickness = 1
+        shared.fovCircle.Filled = false
+        shared.fovCircle.Radius = 100
 
-		connection = RunService.RenderStepped:Connect(function()
-			local mousePos = UserInputService:GetMouseLocation()
-			fovCircle.Position = mousePos
+        -- Start Aimbot Logic
+        shared.aimConnection = RunService.RenderStepped:Connect(function()
+            local mousePos = UserInputService:GetMouseLocation()
+            shared.fovCircle.Position = mousePos
 
-			if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
-				local target = getClosestTarget()
-				if target and target.Character and target.Character:FindFirstChild("Head") then
-					local headPos = target.Character.Head.Position
-					camera.CFrame = camera.CFrame:Lerp(CFrame.new(camera.CFrame.Position, headPos), 0.2)
-				end
-			end
-		end)
+            if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+                local target = getClosestTarget()
+                if target and target.Character and target.Character:FindFirstChild("Head") then
+                    local headPos = target.Character.Head.Position
+                    camera.CFrame = camera.CFrame:Lerp(CFrame.new(camera.CFrame.Position, headPos), 0.2)
+                end
+            end
+        end)
 
-	else
-		-- Safely clean up when toggled off
-		if connection then
-			connection:Disconnect()
-			connection = nil
-		end
-		if fovCircle then
-			fovCircle:Remove()
-			fovCircle = nil
-		end
-	end
+    else
+        -- Clean Up
+        if shared.aimConnection then
+            shared.aimConnection:Disconnect()
+            shared.aimConnection = nil
+        end
+        if shared.fovCircle then
+            shared.fovCircle:Remove()
+            shared.fovCircle = nil
+        end
+    end
 end
 })
+
 
 
 local MISC = window:page({name = "Misc"})
